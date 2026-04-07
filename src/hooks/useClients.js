@@ -47,13 +47,15 @@ export function useClients() {
   };
 
   const togglePayment = async (clientId, monthKey) => {
-    let newIsPaid = false;
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    const isPaid = client.payments ? !!client.payments[monthKey] : false;
+    const newIsPaid = !isPaid;
     
     // Optimistic UI update
     setClients(prev => prev.map(c => {
       if (c.id === clientId) {
-        const isPaid = c.payments ? !!c.payments[monthKey] : false;
-        newIsPaid = !isPaid;
         return {
           ...c,
           payments: {
