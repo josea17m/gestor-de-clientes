@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useClients, getCurrentMonthKey } from './hooks/useClients';
-import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, X } from 'lucide-react';
+import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, X, Download, Calendar as CalendarIcon, History } from 'lucide-react';
 import { cn } from './lib/utils';
 
 function Modal({ isOpen, onClose, title, children }) {
@@ -25,8 +25,9 @@ function Modal({ isOpen, onClose, title, children }) {
 export default function App() {
   const { clients, addClient, togglePayment, removeClient, resetPayments } = useClients();
   const [filter, setFilter] = useState('all'); // 'all', 'paid', 'unpaid', 'zelle', 'square'
-  const [view, setView] = useState('list'); // 'list', 'calendar'
+  const [view, setView] = useState('list'); // 'list', 'calendar', 'history'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [historyMonth, setHistoryMonth] = useState(getCurrentMonthKey());
   
   const currentMonth = getCurrentMonthKey();
 
@@ -47,7 +48,6 @@ export default function App() {
   
   const calendarDays = useMemo(() => {
     const days = [];
-    // Padding for the start of the week (Sun is 0)
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(null);
     }
@@ -63,9 +63,22 @@ export default function App() {
     }
   };
 
+  // Month selector for history (last 12 months)
+  const monthOptions = useMemo(() => {
+    const options = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      options.push({ key, label });
+    }
+    return options;
+  }, []);
+
   const filteredClients = useMemo(() => {
+    const activeMonth = view === 'history' ? historyMonth : currentMonth;
     return clients.filter(c => {
-      const isPaid = !!c.payments[currentMonth];
+      const isPaid = !!c.payments[activeMonth];
       const pMethod = c.paymentMethod || c.payment_method;
       
       if (filter === 'paid') return isPaid;
@@ -73,13 +86,14 @@ export default function App() {
       if (filter === 'zelle') return pMethod === 'Zelle';
       if (filter === 'square') return pMethod === 'Square';
       return true;
-    }).sort((a, b) => a.paymentDay - b.paymentDay);
-  }, [clients, filter, currentMonth]);
+    }).sort((a, b) => (a.paymentDay || a.payment_day) - (b.paymentDay || b.payment_day));
+  }, [clients, filter, currentMonth, historyMonth, view]);
 
   const stats = useMemo(() => {
+    const activeMonth = view === 'history' ? historyMonth : currentMonth;
     const total = clients.length;
-    const paidClients = clients.filter(c => c.payments[currentMonth]);
-    const unpaidClients = clients.filter(c => !c.payments[currentMonth]);
+    const paidClients = clients.filter(c => c.payments[activeMonth]);
+    const unpaidClients = clients.filter(c => !c.payments[activeMonth]);
     
     const paidMoney = paidClients.reduce((sum, c) => {
       const pMethod = c.paymentMethod || c.payment_method;
@@ -97,7 +111,67 @@ export default function App() {
       paidMoney,
       unpaidMoney
     };
-  }, [clients, currentMonth]);
+  }, [clients, currentMonth, historyMonth, view]);
+
+  // PDF Generation Logic
+  const handleExportPDF = () => {
+    if (!window.jspdf) {
+      alert("PDF library is still loading. Please try again in a few seconds.");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const monthLabel = monthOptions.find(m => m.key === historyMonth)?.label || historyMonth;
+
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(79, 70, 229); // Indigo 600
+    doc.text("MamiApp monthly report", 14, 22);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.text(`Period: ${monthLabel}`, 14, 30);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 36);
+
+    // Summary Stats
+    doc.setDrawColor(226, 232, 240); // Slate 200
+    doc.line(14, 42, 196, 42);
+
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59); // Slate 800
+    doc.text(`Total Customers: ${stats.total}`, 14, 52);
+    doc.text(`Paid: ${stats.paid}`, 60, 52);
+    doc.text(`Collected (Net): $${stats.paidMoney.toFixed(2)}`, 110, 52);
+    doc.text(`Pending (Net): $${stats.unpaidMoney.toFixed(2)}`, 110, 58);
+
+    // Table
+    const tableHeaders = [["Customer", "Method", "Original Price", "Net Income", "Status"]];
+    const tableData = clients.map(c => {
+      const pMethod = c.paymentMethod || c.payment_method || '-';
+      const isPaid = !!c.payments[historyMonth];
+      const real = getRealPrice(c.price, pMethod);
+      return [
+        c.name,
+        pMethod,
+        `$${parseFloat(c.price || 0).toFixed(2)}`,
+        `$${real.toFixed(2)}`,
+        isPaid ? "PAID" : "UNPAID"
+      ];
+    }).sort((a, b) => a[0].localeCompare(b[0]));
+
+    doc.autoTable({
+      startY: 65,
+      head: tableHeaders,
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(`MamiApp_Report_${historyMonth}.pdf`);
+  };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
@@ -166,12 +240,12 @@ export default function App() {
         {/* Filters and View Toggles */}
         <div className="flex flex-col space-y-5 mb-8">
           {/* Top Row: View Toggle & Reset */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1">
             <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm shrink-0">
               <button 
                 onClick={() => setView('list')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
                   view === 'list' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
                 )}
               >
@@ -180,42 +254,75 @@ export default function App() {
               <button 
                 onClick={() => setView('calendar')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
                   view === 'calendar' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
                 )}
               >
                 Calendar
               </button>
-            </div>
-
-            <button
-              onClick={handleReset}
-              className="text-[10px] font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-colors border border-rose-100 shadow-sm"
-            >
-              Reset
-            </button>
-          </div>
-
-          {/* Bottom Row: Horizontal Scrollable Filters */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2">
-            {['all', 'paid', 'unpaid', 'zelle', 'square'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
+              <button 
+                onClick={() => setView('history')}
                 className={cn(
-                  "px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap border shadow-sm",
-                  filter === f 
-                    ? "bg-slate-800 text-white border-slate-800 scale-105" 
-                    : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                  view === 'history' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
                 )}
               >
-                {f === 'all' && 'All'}
-                {f === 'paid' && 'Paid'}
-                {f === 'unpaid' && 'Unpaid'}
-                {f === 'zelle' && 'Zelle'}
-                {f === 'square' && 'Square'}
+                <History size={16} />
+                History
               </button>
-            ))}
+            </div>
+
+            {view !== 'history' && (
+              <button
+                onClick={handleReset}
+                className="text-[10px] font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-colors border border-rose-100 shadow-sm shrink-0"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Row: Month Selector (if history) or Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2">
+            {view === 'history' ? (
+              <div className="flex items-center gap-3 w-full">
+                <select
+                  value={historyMonth}
+                  onChange={(e) => setHistoryMonth(e.target.value)}
+                  className="bg-white border border-slate-200 text-slate-700 py-2.5 px-4 rounded-xl text-sm font-semibold shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none flex-1 max-w-xs"
+                >
+                  {monthOptions.map(opt => (
+                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleExportPDF}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition-all active:scale-95"
+                >
+                  <Download size={18} />
+                  Download PDF Report
+                </button>
+              </div>
+            ) : (
+              ['all', 'paid', 'unpaid', 'zelle', 'square'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    "px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap border shadow-sm",
+                    filter === f 
+                      ? "bg-slate-800 text-white border-slate-800 scale-105" 
+                      : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"
+                  )}
+                >
+                  {f === 'all' && 'All'}
+                  {f === 'paid' && 'Paid'}
+                  {f === 'unpaid' && 'Unpaid'}
+                  {f === 'zelle' && 'Zelle'}
+                  {f === 'square' && 'Square'}
+                </button>
+              ))
+            )}
           </div>
         </div>
 
@@ -244,7 +351,7 @@ export default function App() {
                             return (
                               <button
                                 key={client.id}
-                                onClick={() => togglePayment(client.id, currentMonth)}
+                                onClick={() => view !== 'history' && togglePayment(client.id, currentMonth)}
                                 className={cn(
                                   "w-full text-left p-0.5 sm:p-1 rounded-md text-[8px] sm:text-[10px] font-medium truncate flex items-center gap-1 transition-all active:scale-95",
                                   isPaid 
@@ -273,14 +380,15 @@ export default function App() {
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-4">
                   <Users size={32} />
                 </div>
-                <h3 className="text-slate-700 font-medium text-lg">No customers here</h3>
+                <h3 className="text-slate-700 font-medium text-lg">No customers found</h3>
                 <p className="text-slate-500 text-sm mt-1">
-                  {filter === 'all' ? 'Add your first customer by clicking "New Customer".' : 'Change the filter to see other customers.'}
+                  {view === 'history' ? `There are no payments registered for ${monthOptions.find(m => m.key === historyMonth)?.label}.` : 'Add your first customer to get started.'}
                 </p>
               </div>
             ) : (
               filteredClients.map(client => {
-                const isPaid = !!client.payments[currentMonth];
+                const activeMonth = view === 'history' ? historyMonth : currentMonth;
+                const isPaid = !!client.payments[activeMonth];
                 const pMethod = client.paymentMethod || client.payment_method || 'Unknown';
                 const pDay = client.paymentDay || client.payment_day || '-';
                 
@@ -294,7 +402,8 @@ export default function App() {
                   >
                     <div className="flex items-center gap-4">
                       <button 
-                        onClick={() => togglePayment(client.id, currentMonth)}
+                        onClick={() => view !== 'history' && togglePayment(client.id, currentMonth)}
+                        disabled={view === 'history'}
                         className={cn(
                           "w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all shadow-sm active:scale-90",
                           isPaid ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
@@ -335,18 +444,20 @@ export default function App() {
                       )}>
                         {isPaid ? "PAID" : "UNPAID"}
                       </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Are you sure you want to delete ${client.name}?`)) {
-                            removeClient(client.id);
-                          }
-                        }}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                        title="Delete customer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {view !== 'history' && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to delete ${client.name}?`)) {
+                              removeClient(client.id);
+                            }
+                          }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                          title="Delete customer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
