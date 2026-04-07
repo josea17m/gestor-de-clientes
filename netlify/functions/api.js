@@ -38,6 +38,7 @@ app.get('/api/clients', async (req, res) => {
       name: c.name,
       paymentMethod: c.payment_method || c.paymentMethod,
       paymentDay: c.payment_day || c.paymentDay,
+      price: parseFloat(c.price || 0),
       payments: c.payments || {},
       createdAt: c.created_at
     }));
@@ -56,10 +57,10 @@ app.get('/api/clients', async (req, res) => {
 app.post('/api/clients', async (req, res) => {
   try {
     const sql = getSql();
-    const { id, name, paymentMethod, paymentDay, payments } = req.body;
+    const { id, name, paymentMethod, paymentDay, price, payments } = req.body;
     const newClient = await sql`
-      INSERT INTO clients (id, name, payment_method, payment_day, payments)
-      VALUES (${id}, ${name}, ${paymentMethod}, ${paymentDay}, ${payments || {}}::jsonb)
+      INSERT INTO clients (id, name, payment_method, payment_day, price, payments)
+      VALUES (${id}, ${name}, ${paymentMethod}, ${paymentDay}, ${price || 0}, ${payments || {}}::jsonb)
       RETURNING *
     `;
     const mapped = {
@@ -67,6 +68,7 @@ app.post('/api/clients', async (req, res) => {
       name: newClient[0].name,
       paymentMethod: newClient[0].payment_method,
       paymentDay: newClient[0].payment_day,
+      price: parseFloat(newClient[0].price || 0),
       payments: newClient[0].payments,
       createdAt: newClient[0].created_at
     };
@@ -103,6 +105,7 @@ app.patch('/api/clients/:id/payment', async (req, res) => {
       name: updated[0].name,
       paymentMethod: updated[0].payment_method,
       paymentDay: updated[0].payment_day,
+      price: parseFloat(updated[0].price || 0),
       payments: updated[0].payments,
       createdAt: updated[0].created_at
     };
@@ -110,6 +113,18 @@ app.patch('/api/clients/:id/payment', async (req, res) => {
     res.json(mapped);
   } catch (error) {
     console.error('API Error (PATCH /api/payment):', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset monthly
+app.post('/api/clients/reset', async (req, res) => {
+  try {
+    const sql = getSql();
+    const { monthKey } = req.body;
+    await sql`UPDATE clients SET payments = payments - ${monthKey}`;
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

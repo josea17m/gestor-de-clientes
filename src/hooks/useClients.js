@@ -76,5 +76,24 @@ export function useClients() {
     }
   };
 
-  return { clients, addClient, togglePayment, removeClient };
+  const resetPayments = async (monthKey) => {
+    // Optimistic UI update: Clear the month for everyone
+    setClients(prev => prev.map(c => {
+      const newPayments = { ...(c.payments || {}) };
+      delete newPayments[monthKey];
+      return { ...c, payments: newPayments };
+    }));
+
+    try {
+      await fetch('/api/clients/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monthKey })
+      });
+    } catch (error) {
+      console.error('Failed to reset payments:', error);
+    }
+  };
+
+  return { clients, addClient, togglePayment, removeClient, resetPayments };
 }

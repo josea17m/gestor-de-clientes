@@ -23,11 +23,17 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 export default function App() {
-  const { clients, addClient, togglePayment, removeClient } = useClients();
+  const { clients, addClient, togglePayment, removeClient, resetPayments } = useClients();
   const [filter, setFilter] = useState('all'); // 'all', 'paid', 'unpaid'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   const currentMonth = getCurrentMonthKey();
+
+  const handleReset = () => {
+    if (window.confirm('¿Estás seguro de que quieres reiniciar todos los pagos de este mes? Esta acción no se puede deshacer.')) {
+      resetPayments(currentMonth);
+    }
+  };
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
@@ -40,11 +46,18 @@ export default function App() {
 
   const stats = useMemo(() => {
     const total = clients.length;
-    const paid = clients.filter(c => c.payments[currentMonth]).length;
+    const paidClients = clients.filter(c => c.payments[currentMonth]);
+    const unpaidClients = clients.filter(c => !c.payments[currentMonth]);
+    
+    const paidMoney = paidClients.reduce((sum, c) => sum + (c.price || 0), 0);
+    const unpaidMoney = unpaidClients.reduce((sum, c) => sum + (c.price || 0), 0);
+
     return {
       total,
-      paid,
-      unpaid: total - paid
+      paid: paidClients.length,
+      unpaid: total - paidClients.length,
+      paidMoney,
+      unpaidMoney
     };
   }, [clients, currentMonth]);
 
@@ -54,7 +67,8 @@ export default function App() {
     addClient({
       name: fd.get('name'),
       paymentMethod: fd.get('method'),
-      paymentDay: parseInt(fd.get('day'), 10)
+      paymentDay: parseInt(fd.get('day'), 10),
+      price: parseFloat(fd.get('price') || 0)
     });
     setIsAddModalOpen(false);
   };
@@ -80,54 +94,64 @@ export default function App() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-20">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center sm:flex-row sm:justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Total</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium">Clientes</p>
+            <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 mt-3 sm:mt-0">
-              <Users size={20} />
+              <Users size={20} className="text-slate-400 mb-1" />
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center sm:flex-row sm:justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Pagados</p>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium">Pagados</p>
+            <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-emerald-600">{stats.paid}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mt-3 sm:mt-0">
-              <CheckCircle2 size={20} />
+              <CheckCircle2 size={20} className="text-emerald-400 mb-1" />
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center sm:flex-row sm:justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Pendientes</p>
-              <p className="text-2xl font-bold text-rose-500">{stats.unpaid}</p>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium">Recaudado</p>
+            <div className="flex items-end justify-between mt-1">
+              <p className="text-2xl font-bold text-indigo-600">${stats.paidMoney.toLocaleString()}</p>
+              <Wallet size={20} className="text-indigo-400 mb-1" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mt-3 sm:mt-0">
-              <Circle size={20} />
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium">Por Recaudar</p>
+            <div className="flex items-end justify-between mt-1">
+              <p className="text-2xl font-bold text-rose-500">${stats.unpaidMoney.toLocaleString()}</p>
+              <Circle size={20} className="text-rose-400 mb-1" />
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
-          {['all', 'paid', 'unpaid'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
-                filter === f 
-                  ? "bg-indigo-600 text-white shadow-md" 
-                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-              )}
-            >
-              {f === 'all' && 'Todos los clientes'}
-              {f === 'paid' && 'Al día (Pagados)'}
-              {f === 'unpaid' && 'Pendientes'}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:pb-0">
+            {['all', 'paid', 'unpaid'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                  filter === f 
+                    ? "bg-indigo-600 text-white shadow-md" 
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                )}
+              >
+                {f === 'all' && 'Todos'}
+                {f === 'paid' && 'Pagados'}
+                {f === 'unpaid' && 'Pendientes'}
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={handleReset}
+            className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-lg transition-colors border border-rose-100"
+          >
+            Reiniciar Mes
+          </button>
         </div>
 
         {/* List */}
@@ -180,7 +204,7 @@ export default function App() {
                           "bg-slate-100 text-slate-700 border-slate-200"
                         )}>
                           <Wallet size={12} />
-                          {pMethod}
+                          {pMethod} - ${parseFloat(client.price || 0).toLocaleString()}
                         </span>
                         <span className="text-slate-400 text-xs font-medium bg-white px-2 py-1 rounded-lg border border-slate-100 italic">
                           Paga el día {pDay}
@@ -243,7 +267,18 @@ export default function App() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Día de Pago Habitual (1 al 31)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Precio / Tarifa Mensual ($)</label>
+            <input 
+              required
+              name="price"
+              type="number" 
+              step="0.01"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              placeholder="Ej. 150.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Día de Pago (1 al 31)</label>
             <input 
               required
               name="day"

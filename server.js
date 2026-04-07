@@ -40,6 +40,7 @@ app.get('/api/clients', async (req, res) => {
       name: c.name,
       paymentMethod: c.payment_method,
       paymentDay: c.payment_day,
+      price: parseFloat(c.price || 0),
       payments: c.payments || {},
       createdAt: c.created_at
     }));
@@ -55,13 +56,13 @@ app.get('/api/clients', async (req, res) => {
 app.post('/api/clients', async (req, res) => {
   try {
     if (!sql) return res.status(500).json({ error: 'Database not connected' });
-    const { id, name, paymentMethod, paymentDay, payments } = req.body;
+    const { id, name, paymentMethod, paymentDay, price, payments } = req.body;
     
     // We expect the frontend to pass the ID, but we can also let DB generate it.
     // For seamless migration, using frontend's UUID:
     const newClient = await sql`
-      INSERT INTO clients (id, name, payment_method, payment_day, payments)
-      VALUES (${id}, ${name}, ${paymentMethod}, ${paymentDay}, ${payments || {}}::jsonb)
+      INSERT INTO clients (id, name, payment_method, payment_day, price, payments)
+      VALUES (${id}, ${name}, ${paymentMethod}, ${paymentDay}, ${price || 0}, ${payments || {}}::jsonb)
       RETURNING *
     `;
 
@@ -70,6 +71,7 @@ app.post('/api/clients', async (req, res) => {
       name: newClient[0].name,
       paymentMethod: newClient[0].payment_method,
       paymentDay: newClient[0].payment_day,
+      price: parseFloat(newClient[0].price || 0),
       payments: newClient[0].payments,
       createdAt: newClient[0].created_at
     };
@@ -116,6 +118,7 @@ app.patch('/api/clients/:id/payment', async (req, res) => {
       name: updated[0].name,
       paymentMethod: updated[0].payment_method,
       paymentDay: updated[0].payment_day,
+      price: parseFloat(updated[0].price || 0),
       payments: updated[0].payments,
       createdAt: updated[0].created_at
     };
@@ -124,6 +127,26 @@ app.patch('/api/clients/:id/payment', async (req, res) => {
   } catch (error) {
     console.error('Error updating payment:', error);
     res.status(500).json({ error: 'Failed to update payment' });
+  }
+});
+
+// Reset all client payments for a specific month
+app.post('/api/clients/reset', async (req, res) => {
+  try {
+    if (!sql) return res.status(500).json({ error: 'Database not connected' });
+    const { monthKey } = req.body;
+    
+    // To reset a specific month, we iterate through all and remove the key.
+    // In PostgreSQL, we can use: UPDATE clients SET payments = payments - '2026-04'
+    await sql`
+      UPDATE clients 
+      SET payments = payments - ${monthKey}
+    `;
+    
+    res.json({ success: true, message: `Month ${monthKey} reset successful.` });
+  } catch (error) {
+    console.error('Error resetting month:', error);
+    res.status(500).json({ error: 'Failed to reset payments' });
   }
 });
 
