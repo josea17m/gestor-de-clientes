@@ -148,38 +148,49 @@ export default function App() {
         </div>
 
         {/* Filters and View Toggles */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm shrink-0">
-            <button 
-              onClick={() => setView('list')}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
-                view === 'list' ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"
-              )}
+        <div className="flex flex-col space-y-5 mb-8">
+          {/* Top Row: View Toggle & Reset */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm shrink-0">
+              <button 
+                onClick={() => setView('list')}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                  view === 'list' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                Lista
+              </button>
+              <button 
+                onClick={() => setView('calendar')}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                  view === 'calendar' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                Calendario
+              </button>
+            </div>
+
+            <button
+              onClick={handleReset}
+              className="text-[10px] font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-colors border border-rose-100 shadow-sm"
             >
-              Lista
-            </button>
-            <button 
-              onClick={() => setView('calendar')}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
-                view === 'calendar' ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"
-              )}
-            >
-              Calendario
+              Reiniciar
             </button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:pb-0 flex-1 justify-start sm:justify-center">
+          {/* Bottom Row: Horizontal Scrollable Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2">
             {['all', 'paid', 'unpaid', 'zelle', 'square'].map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  "px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                  "px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap border shadow-sm",
                   filter === f 
-                    ? "bg-indigo-600 text-white shadow-md" 
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    ? "bg-slate-800 text-white border-slate-800 scale-105" 
+                    : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"
                 )}
               >
                 {f === 'all' && 'Todos'}
@@ -190,13 +201,6 @@ export default function App() {
               </button>
             ))}
           </div>
-          
-          <button
-            onClick={handleReset}
-            className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-lg transition-colors border border-rose-100"
-          >
-            Reiniciar Mes
-          </button>
         </div>
 
         {/* View Content */}
