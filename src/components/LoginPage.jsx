@@ -32,10 +32,10 @@ export default function LoginPage({ onLogin }) {
       <div className="relative w-full max-w-sm">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shadow-indigo-200 mb-4">
-            <Lock size={28} className="text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl alyx-gradient shadow-lg mb-4">
+            <span className="text-white font-black text-2xl">A</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Customer Records</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Alyx</h1>
           <p className="text-slate-500 text-sm mt-1">Sign in to manage your clients</p>
         </div>
 
