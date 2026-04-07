@@ -1,10 +1,22 @@
--- Run this block in your Neon Database SQL Editor
+-- Run this in your Neon Database SQL Editor
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS clients (
   id UUID PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   payment_method VARCHAR(50) NOT NULL,
   payment_day INTEGER NOT NULL,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
   payments JSONB DEFAULT '{}'::jsonb,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS clients_user_id_idx ON clients(user_id);

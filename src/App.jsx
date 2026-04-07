@@ -4,25 +4,9 @@ import { useAuth } from './hooks/useAuth';
 import { useSettings } from './hooks/useSettings';
 import LoginPage from './components/LoginPage';
 import SettingsPage from './components/SettingsPage';
-import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, X, Download, History, LogOut, Settings } from 'lucide-react';
+import Modal from './components/Modal';
+import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, Download, LogOut, Settings } from 'lucide-react';
 import { cn } from './lib/utils';
-
-function Modal({ isOpen, onClose, title, children }) {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="flex justify-between items-center p-5 border-b border-slate-100">
-          <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Authenticated App ─────────────────────────────────────────────────────────
 function AppContent({ user, logout, settings, updateSettings }) {
@@ -30,6 +14,7 @@ function AppContent({ user, logout, settings, updateSettings }) {
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('list'); // 'list' | 'calendar' | 'history' | 'settings'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [historyMonth, setHistoryMonth] = useState(getCurrentMonthKey());
 
   const currentMonth = getCurrentMonthKey();
@@ -66,13 +51,12 @@ function AppContent({ user, logout, settings, updateSettings }) {
     const activeMonth = view === 'history' ? historyMonth : currentMonth;
     return clients.filter(c => {
       const isPaid = !!c.payments[activeMonth];
-      const pMethod = c.paymentMethod || c.payment_method;
       if (filter === 'paid') return isPaid;
       if (filter === 'unpaid') return !isPaid;
-      if (filter === 'zelle') return pMethod === 'Zelle';
-      if (filter === 'square') return pMethod === 'Square';
+      if (filter === 'zelle') return c.paymentMethod === 'Zelle';
+      if (filter === 'square') return c.paymentMethod === 'Square';
       return true;
-    }).sort((a, b) => (a.paymentDay || a.payment_day || 0) - (b.paymentDay || b.payment_day || 0));
+    }).sort((a, b) => (a.paymentDay || 0) - (b.paymentDay || 0));
   }, [clients, filter, currentMonth, historyMonth, view]);
 
   const stats = useMemo(() => {
@@ -82,8 +66,8 @@ function AppContent({ user, logout, settings, updateSettings }) {
     return {
       total: clients.length,
       paid: paidClients.length,
-      paidMoney: paidClients.reduce((s, c) => s + getRealPrice(c.price || 0, c.paymentMethod || c.payment_method), 0),
-      unpaidMoney: unpaidClients.reduce((s, c) => s + getRealPrice(c.price || 0, c.paymentMethod || c.payment_method), 0),
+      paidMoney: paidClients.reduce((s, c) => s + getRealPrice(c.price || 0, c.paymentMethod), 0),
+      unpaidMoney: unpaidClients.reduce((s, c) => s + getRealPrice(c.price || 0, c.paymentMethod), 0),
     };
   }, [clients, currentMonth, historyMonth, view, getRealPrice]);
 
@@ -109,10 +93,9 @@ function AppContent({ user, logout, settings, updateSettings }) {
       startY: 65,
       head: [['Customer', 'Method', 'Price', 'Net', 'Status']],
       body: clients.map(c => {
-        const m = c.paymentMethod || c.payment_method || '-';
         const paid = !!c.payments[historyMonth];
-        return [c.name, m, `$${parseFloat(c.price||0).toFixed(2)}`, `$${getRealPrice(c.price,m).toFixed(2)}`, paid?'PAID':'UNPAID'];
-      }).sort((a,b) => a[0].localeCompare(b[0])),
+        return [c.name, c.paymentMethod || '-', `$${parseFloat(c.price||0).toFixed(2)}`, `$${getRealPrice(c.price, c.paymentMethod).toFixed(2)}`, paid ? 'PAID' : 'UNPAID'];
+      }).sort((a, b) => a[0].localeCompare(b[0])),
       theme: 'grid',
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -121,10 +104,33 @@ function AppContent({ user, logout, settings, updateSettings }) {
     doc.save(`Alyx_Report_${historyMonth}.pdf`);
   };
 
+  const validateForm = (fd) => {
+    const errors = {};
+    const name = fd.get('name')?.trim();
+    const price = parseFloat(fd.get('price'));
+    const day = parseInt(fd.get('day'), 10);
+
+    if (!name) errors.name = 'Name is required';
+    if (isNaN(price) || price <= 0) errors.price = 'Enter a valid price greater than 0';
+    if (isNaN(day) || day < 1 || day > 31) errors.day = 'Day must be between 1 and 31';
+    return errors;
+  };
+
   const handleAddSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    addClient({ name: fd.get('name'), paymentMethod: fd.get('method'), paymentDay: parseInt(fd.get('day'), 10), price: parseFloat(fd.get('price') || 0) });
+    const errors = validateForm(fd);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+    addClient({
+      name: fd.get('name').trim(),
+      paymentMethod: fd.get('method'),
+      paymentDay: parseInt(fd.get('day'), 10),
+      price: parseFloat(fd.get('price')),
+    });
     setIsAddModalOpen(false);
     e.target.reset();
   };
@@ -173,7 +179,6 @@ function AppContent({ user, logout, settings, updateSettings }) {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-20">
 
-        {/* Show settings or main view */}
         {view === 'settings' ? (
           <SettingsPage settings={settings} updateSettings={updateSettings} addClient={addClient} />
         ) : (
@@ -241,7 +246,7 @@ function AppContent({ user, logout, settings, updateSettings }) {
                 </div>
                 <div className="grid grid-cols-7 gap-1 sm:gap-2">
                   {calendarDays.map((day, idx) => {
-                    const dayClients = filteredClients.filter(c => (c.paymentDay || c.payment_day) === day);
+                    const dayClients = filteredClients.filter(c => c.paymentDay === day);
                     return (
                       <div key={idx} className={cn('min-h-[70px] sm:min-h-[90px] rounded-xl p-1 sm:p-2 transition-all group', day ? 'bg-slate-50/50 hover:bg-slate-100/50 border border-transparent' : 'opacity-0 pointer-events-none')}>
                         {day && (
@@ -282,8 +287,6 @@ function AppContent({ user, logout, settings, updateSettings }) {
                   filteredClients.map(client => {
                     const activeMonth = view === 'history' ? historyMonth : currentMonth;
                     const isPaid = !!client.payments[activeMonth];
-                    const pMethod = client.paymentMethod || client.payment_method || 'Unknown';
-                    const pDay = client.paymentDay || client.payment_day || '-';
                     return (
                       <div key={client.id} className={cn('bg-white rounded-2xl p-4 shadow-sm border transition-all hover:shadow-md flex items-center justify-between gap-4', isPaid ? 'border-emerald-100' : 'border-slate-100')}>
                         <div className="flex items-center gap-4">
@@ -297,14 +300,14 @@ function AppContent({ user, logout, settings, updateSettings }) {
                           <div>
                             <h3 className="font-semibold text-slate-800">{client.name}</h3>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <span className={cn('flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border', pMethod === 'Zelle' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-blue-50 text-blue-700 border-blue-100')}>
+                              <span className={cn('flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border', client.paymentMethod === 'Zelle' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-blue-50 text-blue-700 border-blue-100')}>
                                 <Wallet size={10} />
-                                {pMethod} · ${parseFloat(client.price||0).toLocaleString()}
-                                {pMethod === 'Square' && (
-                                  <span className="opacity-60 ml-1 lowercase italic font-normal">(${getRealPrice(client.price, pMethod).toFixed(2)})</span>
+                                {client.paymentMethod} · ${parseFloat(client.price||0).toLocaleString()}
+                                {client.paymentMethod === 'Square' && (
+                                  <span className="opacity-60 ml-1 lowercase italic font-normal">(${getRealPrice(client.price, client.paymentMethod).toFixed(2)})</span>
                                 )}
                               </span>
-                              <span className="text-slate-400 text-[10px] italic">Day {pDay}</span>
+                              <span className="text-slate-400 text-[10px] italic">Day {client.paymentDay || '-'}</span>
                             </div>
                           </div>
                         </div>
@@ -332,21 +335,26 @@ function AppContent({ user, logout, settings, updateSettings }) {
       </div>
 
       {/* Add Customer Modal */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Customer">
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          {[
-            { label: 'Full Name', name: 'name', type: 'text', placeholder: 'e.g. John Doe', required: true },
-            { label: 'Monthly Price ($)', name: 'price', type: 'number', placeholder: '150.00', step: '0.01', required: true },
-            { label: 'Payment Day (1–31)', name: 'day', type: 'number', min: '1', max: '31', placeholder: '15', required: true },
-          ].map(f => (
-            <div key={f.name}>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{f.label}</label>
-              <input {...f} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" />
-            </div>
-          ))}
+      <Modal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setFormErrors({}); }} title="New Customer">
+        <form onSubmit={handleAddSubmit} className="space-y-4" noValidate>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+            <input name="name" type="text" placeholder="e.g. John Doe" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" />
+            {formErrors.name && <p className="text-rose-500 text-xs mt-1">{formErrors.name}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Monthly Price ($)</label>
+            <input name="price" type="number" placeholder="150.00" step="0.01" min="0.01" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" />
+            {formErrors.price && <p className="text-rose-500 text-xs mt-1">{formErrors.price}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Day (1–31)</label>
+            <input name="day" type="number" min="1" max="31" placeholder="15" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" />
+            {formErrors.day && <p className="text-rose-500 text-xs mt-1">{formErrors.day}</p>}
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
-            <select name="method" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none text-sm">
+            <select name="method" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none text-sm">
               <option value="Zelle">Zelle</option>
               <option value="Square">Square</option>
             </select>

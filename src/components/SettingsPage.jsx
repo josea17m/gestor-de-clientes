@@ -33,7 +33,7 @@ export default function SettingsPage({ settings, updateSettings, addClient }) {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
+        const wb = window.XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = window.XLSX.utils.sheet_to_json(ws, { defval: '' });
 
@@ -59,7 +59,7 @@ export default function SettingsPage({ settings, updateSettings, addClient }) {
         setImportError('Failed to parse file. Make sure it is a valid .xlsx or .csv file.');
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   const handleImport = async () => {
