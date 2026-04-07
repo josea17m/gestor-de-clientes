@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useClients, getCurrentMonthKey } from './hooks/useClients';
-import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, X, Download, Calendar as CalendarIcon, History } from 'lucide-react';
+import { useAuth } from './hooks/useAuth';
+import LoginPage from './components/LoginPage';
+import { Users, CheckCircle2, Circle, Plus, Wallet, Trash2, X, Download, History, LogOut } from 'lucide-react';
 import { cn } from './lib/utils';
 
 function Modal({ isOpen, onClose, title, children }) {
@@ -23,11 +25,24 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 export default function App() {
+  const { user, token, loading: authLoading, login, logout } = useAuth();
   const { clients, addClient, togglePayment, removeClient, resetPayments } = useClients();
-  const [filter, setFilter] = useState('all'); // 'all', 'paid', 'unpaid', 'zelle', 'square'
-  const [view, setView] = useState('list'); // 'list', 'calendar', 'history'
+  const [filter, setFilter] = useState('all');
+  const [view, setView] = useState('list');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [historyMonth, setHistoryMonth] = useState(getCurrentMonthKey());
+
+  // Auth gate — must be after all hooks
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!user) {
+    return <LoginPage onLogin={login} />;
+  }
   
   const currentMonth = getCurrentMonthKey();
 
@@ -192,15 +207,24 @@ export default function App() {
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Customer Records</h1>
-            <p className="text-violet-200 mt-1">Monthly payment tracking</p>
+            <p className="text-violet-200 mt-1">Welcome, {user.name}</p>
           </div>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 bg-white text-indigo-600 py-2.5 px-5 rounded-full font-medium shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
-          >
-            <Plus size={18} />
-            <span className="hidden sm:inline">New Customer</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 bg-white text-indigo-600 py-2.5 px-5 rounded-full font-medium shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+            >
+              <Plus size={18} />
+              <span className="hidden sm:inline">New Customer</span>
+            </button>
+            <button
+              onClick={logout}
+              title="Sign out"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
