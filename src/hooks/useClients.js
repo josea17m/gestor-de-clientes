@@ -18,7 +18,6 @@ function authHeaders() {
   };
 }
 
-// isAuthenticated: boolean - only fetch when true
 export function useClients(isAuthenticated = false) {
   const [clients, setClients] = useState([]);
 
@@ -36,31 +35,41 @@ export function useClients(isAuthenticated = false) {
         if (Array.isArray(data)) setClients(data);
       })
       .catch(console.error);
-  }, [isAuthenticated]); // re-fetch when auth state changes
+  }, [isAuthenticated]);
 
   const addClient = async (client) => {
     const newClient = { ...client, id: crypto.randomUUID(), payments: {} };
     setClients(prev => [...prev, newClient]);
     try {
-      await fetch('/api/clients', {
+      const res = await fetch('/api/clients', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify(newClient)
       });
+      if (!res.ok) throw new Error('Failed to add');
+      const saved = await res.json();
+      // Replace the optimistic entry with the server response
+      setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
     } catch (error) {
       console.error('Failed to add client:', error);
+      // Rollback
+      setClients(prev => prev.filter(c => c.id !== newClient.id));
     }
   };
 
   const removeClient = async (id) => {
+    const snapshot = clients.find(c => c.id === id);
     setClients(prev => prev.filter(c => c.id !== id));
     try {
-      await fetch(`/api/clients/${id}`, {
+      const res = await fetch(`/api/clients/${id}`, {
         method: 'DELETE',
         headers: authHeaders()
       });
+      if (!res.ok) throw new Error('Failed to delete');
     } catch (error) {
       console.error('Failed to delete client:', error);
+      // Rollback
+      if (snapshot) setClients(prev => [...prev, snapshot].sort((a, b) => (a.paymentDay || 0) - (b.paymentDay || 0)));
     }
   };
 
@@ -68,44 +77,64 @@ export function useClients(isAuthenticated = false) {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    const isPaid = client.payments ? !!client.payments[monthKey] : false;
+    const isPaid = !!client.payments?.[monthKey];
     const newIsPaid = !isPaid;
 
+    // Optimistic update
     setClients(prev => prev.map(c => {
-      if (c.id === clientId) {
-        return {
-          ...c,
-          payments: { ...(c.payments || {}), [monthKey]: newIsPaid }
-        };
+      if (c.id !== clientId) return c;
+      const payments = { ...(c.payments || {}) };
+      if (newIsPaid) {
+        payments[monthKey] = true;
+      } else {
+        delete payments[monthKey];
       }
-      return c;
+      return { ...c, payments };
     }));
 
     try {
-      await fetch(`/api/clients/${clientId}/payment`, {
+      const res = await fetch(`/api/clients/${clientId}/payment`, {
         method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify({ monthKey, isPaid: newIsPaid })
       });
+      if (!res.ok) throw new Error('Failed to update payment');
     } catch (error) {
       console.error('Failed to update payment:', error);
+      // Rollback to original state
+      setClients(prev => prev.map(c => {
+        if (c.id !== clientId) return c;
+        const payments = { ...(c.payments || {}) };
+        if (isPaid) {
+          payments[monthKey] = true;
+        } else {
+          delete payments[monthKey];
+        }
+        return { ...c, payments };
+      }));
     }
   };
 
   const resetPayments = async (monthKey) => {
+    const snapshot = clients.map(c => ({ ...c, payments: { ...(c.payments || {}) } }));
+
     setClients(prev => prev.map(c => {
       const newPayments = { ...(c.payments || {}) };
       delete newPayments[monthKey];
       return { ...c, payments: newPayments };
     }));
+
     try {
-      await fetch('/api/clients/reset', {
+      const res = await fetch('/api/clients/reset', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ monthKey })
       });
+      if (!res.ok) throw new Error('Failed to reset payments');
     } catch (error) {
       console.error('Failed to reset payments:', error);
+      // Rollback
+      setClients(snapshot);
     }
   };
 

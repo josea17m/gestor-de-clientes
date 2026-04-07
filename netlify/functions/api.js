@@ -15,7 +15,8 @@ const getSql = () => {
   return neon(process.env.DATABASE_URL);
 };
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mamiapp-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 // --- Auth Middleware ---
 const requireAuth = (req, res, next) => {
