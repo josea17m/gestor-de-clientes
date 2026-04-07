@@ -38,8 +38,12 @@ export default function App() {
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
       const isPaid = !!c.payments[currentMonth];
+      const pMethod = c.paymentMethod || c.payment_method;
+      
       if (filter === 'paid') return isPaid;
       if (filter === 'unpaid') return !isPaid;
+      if (filter === 'zelle') return pMethod === 'Zelle';
+      if (filter === 'square') return pMethod === 'Square';
       return true;
     }).sort((a, b) => a.paymentDay - b.paymentDay);
   }, [clients, filter, currentMonth]);
@@ -128,7 +132,7 @@ export default function App() {
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:pb-0">
-            {['all', 'paid', 'unpaid'].map(f => (
+            {['all', 'paid', 'unpaid', 'zelle', 'square'].map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -142,6 +146,8 @@ export default function App() {
                 {f === 'all' && 'Todos'}
                 {f === 'paid' && 'Pagados'}
                 {f === 'unpaid' && 'Pendientes'}
+                {f === 'zelle' && 'Zelle'}
+                {f === 'square' && 'Square'}
               </button>
             ))}
           </div>
@@ -262,8 +268,6 @@ export default function App() {
             >
               <option value="Zelle">Zelle</option>
               <option value="Square">Square</option>
-              <option value="Cash">Efectivo</option>
-              <option value="Transfer">Transferencia</option>
             </select>
           </div>
           <div>
