@@ -58,7 +58,7 @@ export default function App() {
   }, [daysInMonth, firstDayOfMonth]);
 
   const handleReset = () => {
-    if (window.confirm('¿Estás seguro de que quieres reiniciar todos los pagos de este mes? Esta acción no se puede deshacer.')) {
+    if (window.confirm('Are you sure you want to reset all payments for this month? This action cannot be undone.')) {
       resetPayments(currentMonth);
     }
   };
@@ -117,15 +117,15 @@ export default function App() {
       <div className="bg-gradient-to-r from-violet-600 to-indigo-600 pb-32 pt-10 px-6 sm:px-10 rounded-b-[2rem] shadow-lg">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Registro de Clientes</h1>
-            <p className="text-violet-200 mt-1">Control de pagos mensuales</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Customer Records</h1>
+            <p className="text-violet-200 mt-1">Monthly payment tracking</p>
           </div>
           <button 
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 bg-white text-indigo-600 py-2.5 px-5 rounded-full font-medium shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
           >
             <Plus size={18} />
-            <span className="hidden sm:inline">Nuevo Cliente</span>
+            <span className="hidden sm:inline">New Customer</span>
           </button>
         </div>
       </div>
@@ -134,28 +134,28 @@ export default function App() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-sm font-medium">Clientes</p>
+            <p className="text-slate-500 text-sm font-medium">Customers</p>
             <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
               <Users size={20} className="text-slate-400 mb-1" />
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-sm font-medium">Pagados</p>
+            <p className="text-slate-500 text-sm font-medium">Paid</p>
             <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-emerald-600">{stats.paid}</p>
               <CheckCircle2 size={20} className="text-emerald-400 mb-1" />
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Recaudado (Neto)</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Collected (Net)</p>
             <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-indigo-600">${stats.paidMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <Wallet size={20} className="text-indigo-400 mb-1" />
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Por Recaudar (Neto)</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending (Net)</p>
             <div className="flex items-end justify-between mt-1">
               <p className="text-2xl font-bold text-rose-500">${stats.unpaidMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <Circle size={20} className="text-rose-400 mb-1" />
@@ -175,7 +175,7 @@ export default function App() {
                   view === 'list' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
                 )}
               >
-                Lista
+                List
               </button>
               <button 
                 onClick={() => setView('calendar')}
@@ -184,7 +184,7 @@ export default function App() {
                   view === 'calendar' ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
                 )}
               >
-                Calendario
+                Calendar
               </button>
             </div>
 
@@ -192,7 +192,7 @@ export default function App() {
               onClick={handleReset}
               className="text-[10px] font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-colors border border-rose-100 shadow-sm"
             >
-              Reiniciar
+              Reset
             </button>
           </div>
 
@@ -209,9 +209,9 @@ export default function App() {
                     : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"
                 )}
               >
-                {f === 'all' && 'Todos'}
-                {f === 'paid' && 'Pagados'}
-                {f === 'unpaid' && 'Pendientes'}
+                {f === 'all' && 'All'}
+                {f === 'paid' && 'Paid'}
+                {f === 'unpaid' && 'Unpaid'}
                 {f === 'zelle' && 'Zelle'}
                 {f === 'square' && 'Square'}
               </button>
@@ -223,7 +223,7 @@ export default function App() {
         {view === 'calendar' ? (
           <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 overflow-hidden mb-10">
             <div className="grid grid-cols-7 mb-4 border-b border-slate-50 pb-2">
-              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                 <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{d}</div>
               ))}
             </div>
@@ -251,7 +251,7 @@ export default function App() {
                                     ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
                                     : "bg-white text-slate-700 border border-slate-200 shadow-sm"
                                 )}
-                                title={`${client.name} - ${isPaid ? 'Pagado' : 'Pendiente'}`}
+                                title={`${client.name} - ${isPaid ? 'Paid' : 'Unpaid'}`}
                               >
                                 <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", isPaid ? "bg-emerald-500" : "bg-rose-500")} />
                                 <span className="truncate">{client.name}</span>
@@ -273,9 +273,9 @@ export default function App() {
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-4">
                   <Users size={32} />
                 </div>
-                <h3 className="text-slate-700 font-medium text-lg">No hay clientes aquí</h3>
+                <h3 className="text-slate-700 font-medium text-lg">No customers here</h3>
                 <p className="text-slate-500 text-sm mt-1">
-                  {filter === 'all' ? 'Añade tu primer cliente pulsando "Nuevo Cliente".' : 'Cambia de filtro para ver otros clientes.'}
+                  {filter === 'all' ? 'Add your first customer by clicking "New Customer".' : 'Change the filter to see other customers.'}
                 </p>
               </div>
             ) : (
@@ -322,7 +322,7 @@ export default function App() {
                             )}
                           </span>
                           <span className="text-slate-400 text-xs font-medium bg-white px-2 py-1 rounded-lg border border-slate-100 italic">
-                            Paga el día {pDay}
+                            Paid on day {pDay}
                           </span>
                         </div>
                       </div>
@@ -333,17 +333,17 @@ export default function App() {
                         "hidden sm:flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
                         isPaid ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
                       )}>
-                        {isPaid ? "PAGADO" : "PENDIENTE"}
+                        {isPaid ? "PAID" : "UNPAID"}
                       </div>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`¿Seguro que deseas eliminar a ${client.name}?`)) {
+                          if (window.confirm(`Are you sure you want to delete ${client.name}?`)) {
                             removeClient(client.id);
                           }
                         }}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                        title="Eliminar cliente"
+                        title="Delete customer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -356,20 +356,20 @@ export default function App() {
         )}
       </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Nuevo Cliente">
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Customer">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
             <input 
               required
               name="name"
               type="text" 
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-              placeholder="Ej. Juan Pérez"
+              placeholder="e.g. John Doe"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
             <select 
               name="method"
               required
@@ -380,18 +380,18 @@ export default function App() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Precio / Tarifa Mensual ($)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Monthly Price / Rate ($)</label>
             <input 
               required
               name="price"
               type="number" 
               step="0.01"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-              placeholder="Ej. 150.00"
+              placeholder="e.g. 150.00"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Día de Pago (1 al 31)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Day (1 to 31)</label>
             <input 
               required
               name="day"
@@ -399,14 +399,14 @@ export default function App() {
               min="1"
               max="31"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-              placeholder="Ej. 15"
+              placeholder="e.g. 15"
             />
           </div>
           <button 
             type="submit"
             className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] shadow-md hover:shadow-lg"
           >
-            Guardar Cliente
+            Save Customer
           </button>
         </form>
       </Modal>
