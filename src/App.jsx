@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useClients, getCurrentMonthKey } from './hooks/useClients';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './components/LoginPage';
@@ -25,8 +25,8 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 export default function App() {
-  const { user, token, loading: authLoading, login, logout } = useAuth();
-  const { clients, addClient, togglePayment, removeClient, resetPayments } = useClients();
+  const { user, loading: authLoading, login, logout } = useAuth();
+  const { clients, addClient, togglePayment, removeClient, resetPayments } = useClients(!!user);
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('list');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -47,14 +47,14 @@ export default function App() {
   const currentMonth = getCurrentMonthKey();
 
   // Square Fee Helper (3.3% + $0.30)
-  const getRealPrice = (price, method) => {
+  const getRealPrice = useCallback((price, method) => {
     if (!price || price <= 0) return 0;
     if (method === 'Square') {
       const net = price * (1 - 0.033) - 0.30;
       return Math.max(0, net);
     }
     return price;
-  };
+  }, []);
 
   // Calendar Logic
   const today = new Date();

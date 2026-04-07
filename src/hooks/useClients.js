@@ -18,17 +18,25 @@ function authHeaders() {
   };
 }
 
-export function useClients() {
+// isAuthenticated: boolean - only fetch when true
+export function useClients(isAuthenticated = false) {
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setClients([]);
+      return;
+    }
     fetch('/api/clients', { headers: authHeaders() })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Unauthorized');
+        return res.json();
+      })
       .then(data => {
         if (Array.isArray(data)) setClients(data);
       })
       .catch(console.error);
-  }, []);
+  }, [isAuthenticated]); // re-fetch when auth state changes
 
   const addClient = async (client) => {
     const newClient = { ...client, id: crypto.randomUUID(), payments: {} };
