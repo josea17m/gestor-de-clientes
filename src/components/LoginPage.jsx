@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -100,7 +100,7 @@ export default function LoginPage({ onLogin }) {
             >
               {loading ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Signing in...
                 </>
               ) : (
