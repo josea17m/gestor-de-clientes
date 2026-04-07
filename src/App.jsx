@@ -30,6 +30,16 @@ export default function App() {
   
   const currentMonth = getCurrentMonthKey();
 
+  // Square Fee Helper (3.3% + $0.30)
+  const getRealPrice = (price, method) => {
+    if (!price || price <= 0) return 0;
+    if (method === 'Square') {
+      const net = price * (1 - 0.033) - 0.30;
+      return Math.max(0, net);
+    }
+    return price;
+  };
+
   // Calendar Logic
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
@@ -71,8 +81,14 @@ export default function App() {
     const paidClients = clients.filter(c => c.payments[currentMonth]);
     const unpaidClients = clients.filter(c => !c.payments[currentMonth]);
     
-    const paidMoney = paidClients.reduce((sum, c) => sum + (c.price || 0), 0);
-    const unpaidMoney = unpaidClients.reduce((sum, c) => sum + (c.price || 0), 0);
+    const paidMoney = paidClients.reduce((sum, c) => {
+      const pMethod = c.paymentMethod || c.payment_method;
+      return sum + getRealPrice(c.price || 0, pMethod);
+    }, 0);
+    const unpaidMoney = unpaidClients.reduce((sum, c) => {
+      const pMethod = c.paymentMethod || c.payment_method;
+      return sum + getRealPrice(c.price || 0, pMethod);
+    }, 0);
 
     return {
       total,
@@ -132,16 +148,16 @@ export default function App() {
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-sm font-medium">Recaudado</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Recaudado (Neto)</p>
             <div className="flex items-end justify-between mt-1">
-              <p className="text-2xl font-bold text-indigo-600">${stats.paidMoney.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-indigo-600">${stats.paidMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <Wallet size={20} className="text-indigo-400 mb-1" />
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-sm font-medium">Por Recaudar</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Por Recaudar (Neto)</p>
             <div className="flex items-end justify-between mt-1">
-              <p className="text-2xl font-bold text-rose-500">${stats.unpaidMoney.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-rose-500">${stats.unpaidMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <Circle size={20} className="text-rose-400 mb-1" />
             </div>
           </div>
@@ -292,13 +308,18 @@ export default function App() {
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-tight shadow-sm border",
+                            "flex flex-wrap items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight shadow-sm border",
                             pMethod === 'Zelle' ? "bg-indigo-50 text-indigo-700 border-indigo-100" :
                             pMethod === 'Square' ? "bg-blue-50 text-blue-700 border-blue-100" :
                             "bg-slate-100 text-slate-700 border-slate-200"
                           )}>
                             <Wallet size={12} />
                             {pMethod} - ${parseFloat(client.price || 0).toLocaleString()}
+                            {pMethod === 'Square' && (
+                              <span className="opacity-60 ml-1 text-[9px] lowercase italic border-l border-blue-200 pl-1">
+                                (${getRealPrice(client.price, pMethod).toFixed(2)} real)
+                              </span>
+                            )}
                           </span>
                           <span className="text-slate-400 text-xs font-medium bg-white px-2 py-1 rounded-lg border border-slate-100 italic">
                             Paga el día {pDay}
